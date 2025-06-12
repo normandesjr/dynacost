@@ -6,23 +6,31 @@ import (
 	"strings"
 	"time"
 
+	"github.com/normandesjr/dynacost/pkg/configkeys"
+	"github.com/normandesjr/dynacost/scan"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-)
-
-const (
-	interval = "interval"
 )
 
 var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "dynacost <table1>...<tablen>",
-	Short: "DynamoDB Cost",
+	Short: "Interactive DynamoDB Cost",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return nil
+		return rootAction(args)
 	},
+}
+
+func rootAction(args []string) error {
+	tl := &scan.TableList{}
+	for _, t := range args {
+		tl.Add(t)
+	}
+
+	// TODO: start app
+	return nil
 }
 
 func Execute() {
@@ -37,8 +45,13 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.dynacost.yaml)")
 
-	rootCmd.Flags().DurationP(interval, "i", 5*time.Minute, "minutes to wait between updates")
-	viper.BindPFlag(interval, rootCmd.Flags().Lookup(interval))
+	rootCmd.Flags().DurationP(configkeys.Interval, "i", 5*time.Minute, "minutes to wait between updates")
+	rootCmd.Flags().StringP(configkeys.Region, "r", "sa-east-1", "default AWS region")
+	rootCmd.Flags().StringP(configkeys.Profile, "p", "", "AWS profile")
+
+	viper.BindPFlag(configkeys.Interval, rootCmd.Flags().Lookup(configkeys.Interval))
+	viper.BindPFlag(configkeys.Region, rootCmd.Flags().Lookup(configkeys.Region))
+	viper.BindPFlag(configkeys.Profile, rootCmd.Flags().Lookup(configkeys.Profile))
 }
 
 // initConfig reads in config file and ENV variables if set.
