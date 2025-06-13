@@ -16,11 +16,6 @@ type DynamoDBClient interface {
 	DescribeTable(ctx context.Context, params *dynamodb.DescribeTableInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DescribeTableOutput, error)
 }
 
-// type DescribeTable struct {
-// 	client    DynamoDBClient
-// 	tableName string
-// }
-
 type TableInfo struct {
 	Name string
 	WCU  int64
@@ -33,13 +28,6 @@ type GSI struct {
 	WCU  int64
 	RCU  int64
 }
-
-// func NewDescribeTable(client DynamoDBClient, tableName string) *DescribeTable {
-// 	return &DescribeTable{
-// 		client:    client,
-// 		tableName: tableName,
-// 	}
-// }
 
 func DescribeTable(context context.Context, client DynamoDBClient, tableName string) (*TableInfo, error) {
 	des, err := client.DescribeTable(context, &dynamodb.DescribeTableInput{
