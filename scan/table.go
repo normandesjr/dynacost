@@ -16,6 +16,14 @@ type DynamoDBClient interface {
 	DescribeTable(ctx context.Context, params *dynamodb.DescribeTableInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DescribeTableOutput, error)
 }
 
+type TableClient interface {
+	GetTableInfo(context context.Context, tableName string) (*TableInfo, error)
+}
+
+type DynamoDBService struct {
+	client DynamoDBClient
+}
+
 type TableInfo struct {
 	Name        string
 	WCU         int64
@@ -31,8 +39,14 @@ type GSI struct {
 	MonthlyCost float32
 }
 
-func DescribeTable(context context.Context, client DynamoDBClient, tableName string) (*TableInfo, error) {
-	des, err := client.DescribeTable(context, &dynamodb.DescribeTableInput{
+func NewDynamoDBService(client DynamoDBClient) *DynamoDBService {
+	return &DynamoDBService{
+		client: client,
+	}
+}
+
+func (s *DynamoDBService) GetTableInfo(context context.Context, tableName string) (*TableInfo, error) {
+	des, err := s.client.DescribeTable(context, &dynamodb.DescribeTableInput{
 		TableName: aws.String(tableName),
 	})
 	if err != nil {

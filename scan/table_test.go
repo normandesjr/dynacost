@@ -118,9 +118,10 @@ func TestLoad(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := newMockDynamoDBClient(tc.expError, tc.wcu, tc.rcu, tc.monthlyCost, tc.gsis)
+			mockClient := newMockDynamoDBClient(tc.expError, tc.wcu, tc.rcu, tc.monthlyCost, tc.gsis)
+			client := scan.NewDynamoDBService(mockClient)
 			tname := "test"
-			table, err := scan.DescribeTable(context.TODO(), client, tname)
+			table, err := client.GetTableInfo(context.TODO(), tname)
 
 			if tc.expError != nil {
 				if err == nil {
