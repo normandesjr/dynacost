@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	wcuPerHour = 0.000975
-	rcuPerHour = 0.000195
+	wcuPerMounth = 0.000975 * 24 * 30
+	rcuPerMounth = 0.000195 * 24 * 30
 )
 
 type DynamoDBClient interface {
@@ -17,16 +17,18 @@ type DynamoDBClient interface {
 }
 
 type TableInfo struct {
-	Name string
-	WCU  int64
-	RCU  int64
-	GSIs []GSI
+	Name        string
+	WCU         int64
+	RCU         int64
+	MonthlyCost float32
+	GSIs        []GSI
 }
 
 type GSI struct {
-	Name string
-	WCU  int64
-	RCU  int64
+	Name        string
+	WCU         int64
+	RCU         int64
+	MonthlyCost float32
 }
 
 func DescribeTable(context context.Context, client DynamoDBClient, tableName string) (*TableInfo, error) {
@@ -41,19 +43,23 @@ func DescribeTable(context context.Context, client DynamoDBClient, tableName str
 	rcu := des.Table.ProvisionedThroughput.ReadCapacityUnits
 
 	ti := &TableInfo{
-		Name: tableName,
-		WCU:  *wcu,
-		RCU:  *rcu,
+		Name:        tableName,
+		WCU:         *wcu,
+		RCU:         *rcu,
+		MonthlyCost: wcuPerMounth*float32(*wcu) + rcuPerMounth*float32(*rcu),
 	}
 
 	gsis := des.Table.GlobalSecondaryIndexes
 	if len(gsis) > 0 {
 		gs := make([]GSI, len(gsis))
 		for i, g := range gsis {
+			gwcu := *g.ProvisionedThroughput.WriteCapacityUnits
+			grcu := *g.ProvisionedThroughput.ReadCapacityUnits
 			gs[i] = GSI{
-				Name: *g.IndexName,
-				WCU:  *g.ProvisionedThroughput.WriteCapacityUnits,
-				RCU:  *g.ProvisionedThroughput.ReadCapacityUnits,
+				Name:        *g.IndexName,
+				WCU:         gwcu,
+				RCU:         grcu,
+				MonthlyCost: wcuPerMounth*float32(gwcu) + rcuPerMounth*float32(grcu),
 			}
 		}
 		ti.GSIs = gs
