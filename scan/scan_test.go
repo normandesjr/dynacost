@@ -11,13 +11,15 @@ import (
 )
 
 type mockDynamoDBClient struct {
-	expError error
-	wcu      int64
-	rcu      int64
-	gsis     []struct {
-		name string
-		wcu  int64
-		rcu  int64
+	expError    error
+	wcu         int64
+	rcu         int64
+	monthlyCost float32
+	gsis        []struct {
+		name        string
+		wcu         int64
+		rcu         int64
+		monthlyCost float32
 	}
 }
 
@@ -57,48 +59,55 @@ func (m *mockDynamoDBClient) DescribeTable(ctx context.Context,
 	return des, nil
 }
 
-func newMockDynamoDBClient(expError error, wcu, rcu int64, gsis []struct {
-	name string
-	wcu  int64
-	rcu  int64
+func newMockDynamoDBClient(expError error, wcu, rcu int64, monthlyCost float32, gsis []struct {
+	name        string
+	wcu         int64
+	rcu         int64
+	monthlyCost float32
 }) *mockDynamoDBClient {
 
 	return &mockDynamoDBClient{
-		expError: expError,
-		wcu:      wcu,
-		rcu:      rcu,
-		gsis:     gsis,
+		expError:    expError,
+		wcu:         wcu,
+		rcu:         rcu,
+		monthlyCost: monthlyCost,
+		gsis:        gsis,
 	}
 }
 
 func TestLoad(t *testing.T) {
 	testCases := []struct {
-		name     string
-		expError error
-		wcu      int64
-		rcu      int64
-		gsis     []struct {
-			name string
-			wcu  int64
-			rcu  int64
+		name        string
+		expError    error
+		wcu         int64
+		rcu         int64
+		monthlyCost float32
+		gsis        []struct {
+			name        string
+			wcu         int64
+			rcu         int64
+			monthlyCost float32
 		}
 	}{
 		{
-			name: "NoGSI",
-			wcu:  1000,
-			rcu:  1000,
+			name:        "NoGSI",
+			wcu:         1000,
+			rcu:         1000,
+			monthlyCost: scan.WcuPerMounth*1000 + scan.RcuPerMounth*1000,
 		},
 		{
-			name: "WithGSI",
-			wcu:  1000,
-			rcu:  1000,
+			name:        "WithGSI",
+			wcu:         1000,
+			rcu:         1000,
+			monthlyCost: scan.WcuPerMounth*1000 + scan.RcuPerMounth*1000,
 			gsis: []struct {
-				name string
-				wcu  int64
-				rcu  int64
+				name        string
+				wcu         int64
+				rcu         int64
+				monthlyCost float32
 			}{
-				{name: "gsi1", wcu: 1000, rcu: 800},
-				{name: "gsi2", wcu: 500, rcu: 400},
+				{name: "gsi1", wcu: 1000, rcu: 800, monthlyCost: scan.WcuPerMounth*1000 + scan.RcuPerMounth*800},
+				{name: "gsi2", wcu: 500, rcu: 400, monthlyCost: scan.WcuPerMounth*500 + scan.RcuPerMounth*400},
 			},
 		},
 		{
@@ -109,7 +118,7 @@ func TestLoad(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := newMockDynamoDBClient(tc.expError, tc.wcu, tc.rcu, tc.gsis)
+			client := newMockDynamoDBClient(tc.expError, tc.wcu, tc.rcu, tc.monthlyCost, tc.gsis)
 			tname := "test"
 			table, err := scan.DescribeTable(context.TODO(), client, tname)
 
@@ -141,6 +150,10 @@ func TestLoad(t *testing.T) {
 				t.Errorf("Expected %d as WCU, got %d", tc.wcu, table.WCU)
 			}
 
+			if table.MonthlyCost != tc.monthlyCost {
+				t.Errorf("Expected %f as monthly cost, got %f", tc.monthlyCost, table.MonthlyCost)
+			}
+
 			if len(tc.gsis) == 0 && len(table.GSIs) != 0 {
 				t.Fatalf("Expected no GSI here, but got %v", table.GSIs)
 			}
@@ -152,7 +165,7 @@ func TestLoad(t *testing.T) {
 			for _, g := range tc.gsis {
 				equals := false
 				for _, gt := range table.GSIs {
-					if g.name == gt.Name && g.rcu == gt.RCU && g.wcu == gt.WCU {
+					if g.name == gt.Name && g.rcu == gt.RCU && g.wcu == gt.WCU && g.monthlyCost == gt.MonthlyCost {
 						equals = true
 					}
 				}
@@ -163,6 +176,4 @@ func TestLoad(t *testing.T) {
 
 		})
 	}
-	// dt := scan.NewDescribeTable(&mockDynamoDBClient{}, "")
-	// dt.Load(context.TODO())
 }

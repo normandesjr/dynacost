@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	wcuPerMounth = 0.000975 * 24 * 30
-	rcuPerMounth = 0.000195 * 24 * 30
+	WcuPerMounth = 0.000975 * 24 * 30
+	RcuPerMounth = 0.000195 * 24 * 30
 )
 
 type DynamoDBClient interface {
@@ -46,7 +46,7 @@ func DescribeTable(context context.Context, client DynamoDBClient, tableName str
 		Name:        tableName,
 		WCU:         *wcu,
 		RCU:         *rcu,
-		MonthlyCost: wcuPerMounth*float32(*wcu) + rcuPerMounth*float32(*rcu),
+		MonthlyCost: WcuPerMounth*float32(*wcu) + RcuPerMounth*float32(*rcu),
 	}
 
 	gsis := des.Table.GlobalSecondaryIndexes
@@ -59,7 +59,7 @@ func DescribeTable(context context.Context, client DynamoDBClient, tableName str
 				Name:        *g.IndexName,
 				WCU:         gwcu,
 				RCU:         grcu,
-				MonthlyCost: wcuPerMounth*float32(gwcu) + rcuPerMounth*float32(grcu),
+				MonthlyCost: WcuPerMounth*float32(gwcu) + RcuPerMounth*float32(grcu),
 			}
 		}
 		ti.GSIs = gs
